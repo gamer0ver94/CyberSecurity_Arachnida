@@ -8,33 +8,30 @@ import matplotlib.image as mpim
 import imghdr
 import argparse
 from PIL import Image
+import math
 
 def createDir(dir, name):
     path = os.path.join(name, dir)
     try:
         os.mkdir(path)
     except:
-        print("No directory created.")
+        print("Directory " + dir + " Already Exist.")
 
 def extractImage(url, filename, path):
-    r = requests.get(url, stream = True)
-    if r.status_code == 200:
-        with open(path + filename, "wb") as myImg:
-            r.raw.decode_content = True
-            shutil.copyfileobj(r.raw, myImg)
-            
-            
-            # if imgType:
-            #     
-    else:
-        print("Cant do it")
-    try:
+    try :
+        response = requests.get(url, stream = True)
+        if response.status_code == 200:
+            with open(path + filename, "wb") as myImg:
+                response.raw.decode_content = True
+                shutil.copyfileobj(response.raw, myImg)
+        else:
+            print("Cant do it")
         img = Image.open(path + filename, 'r')
         imgType = img.format
-        print(imgType)
         os.rename(path + filename, path + filename + "." + imgType)
     except:
-        print("invalid format image")
+        print('Image from url ' + url + ' could not be downloaded')  
+    
     
     
 def checkInput():
@@ -52,7 +49,7 @@ def checkInput():
         "--recursive",
         action="store_true",
         default='stdout',
-        required=False,
+        required=True,
         help="Download Images Recursively",
     )
     parser.add_argument(
@@ -79,7 +76,6 @@ def checkInput():
     
     
     args = parser.parse_args()
-    print(args.length)
     return args
 
 
@@ -87,23 +83,24 @@ def main():
 
     args = checkInput()
     try :
+        response = requests.get(args.website)
         createDir(args.path, os.getcwd())
-    except:
-        print("Directory already exist")
-    try :
-        request = requests.get(args.website)
     except :
-        print("Invalid Request")
-    if request.status_code == 200:
-        htmlParser = BeautifulSoup(request.content, "html.parser")
+        print("Request Failed.")
+    if response.status_code == 200:
+        htmlParser = BeautifulSoup(response.content, "html.parser")
         images = htmlParser.find_all("img")
-        print(images[1].date)
+        l = args.length
+        if args.length > len(images) :
+                l = len(images)
         n = 0
-        l = len(images)
-        print("number is " + str(len(images)))
-        for i in range(args.length):
-            if args.length > len(images) :
-                break
+        print("downloading " + str(l) + " images.")
+        for i in range(l):
+            print("Extracting image")
+            print(str(math.floor( n / l * 100)) + "%")
+            #name = images[i].attrs['span']
+            #print(images[i])
             extractImage(images[i].attrs['src'], str(n), args.path)
             n += 1
+        print("100%")
 main()
